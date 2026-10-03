@@ -25,6 +25,7 @@ type HabitsContextValue = {
   loaded: boolean;
   addHabit: (name: string, color: string) => void;
   toggleDone: (id: string, date: string) => void;
+  removeHabit: (id: string) => void;
 };
 
 const STORAGE_KEY = 'habits:v1';
@@ -62,12 +63,16 @@ function parseStoredHabits(raw: string | null): Habit[] {
 export function HabitsProvider({ children }: { children: ReactNode }) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loaded, setLoaded] = useState(false);
+  // False if reading storage failed, so we never overwrite habits we couldn't read.
+  const [canSave, setCanSave] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
-        if (!cancelled) setHabits(parseStoredHabits(raw));
+        if (cancelled) return;
+        setHabits(parseStoredHabits(raw));
+        setCanSave(true);
       })
       .catch((error) => console.warn('Failed to load habits', error))
       .finally(() => {
@@ -78,13 +83,13 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Only save after the first load, so the empty initial state never overwrites saved data.
+  // Only save after a successful load, so the empty initial state never overwrites saved data.
   useEffect(() => {
-    if (!loaded) return;
+    if (!canSave) return;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(habits)).catch((error) =>
       console.warn('Failed to save habits', error)
     );
-  }, [habits, loaded]);
+  }, [habits, canSave]);
 
   const addHabit = (name: string, color: string) => {
     const habit: Habit = {
@@ -109,8 +114,14 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const removeHabit = (id: string) => {
+    setHabits((current) => current.filter((habit) => habit.id !== id));
+  };
+
   return (
-    <HabitsContext value={{ habits, loaded, addHabit, toggleDone }}>{children}</HabitsContext>
+    <HabitsContext value={{ habits, loaded, addHabit, toggleDone, removeHabit }}>
+      {children}
+    </HabitsContext>
   );
 }
 
