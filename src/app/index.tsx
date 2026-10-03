@@ -2,11 +2,13 @@ import { router, useTheme } from 'expo-router';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { toDateKey, useHabits } from '@/habits/habits-context';
+import { getLastSevenDays, getStreak } from '@/habits/streaks';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { habits, loaded, toggleDone } = useHabits();
-  const today = toDateKey(new Date());
+  const now = new Date();
+  const today = toDateKey(now);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -29,11 +31,14 @@ export default function HomeScreen() {
           contentContainerStyle={styles.list}
           renderItem={({ item }) => {
             const done = item.doneDates.includes(today);
+            const streak = getStreak(item.doneDates, now);
+            const week = getLastSevenDays(item.doneDates, now);
+            const streakText = streak === 1 ? '1 day' : `${streak} days`;
             return (
               <Pressable
                 role="checkbox"
                 aria-checked={done}
-                aria-label={item.name}
+                aria-label={`${item.name}, streak ${streakText}`}
                 accessibilityHint={done ? 'Marks as not done today' : 'Marks as done today'}
                 onPress={() => toggleDone(item.id, today)}
                 style={({ pressed }) => [
@@ -43,21 +48,58 @@ export default function HomeScreen() {
                     : { backgroundColor: colors.card, borderColor: colors.border },
                   { opacity: pressed ? 0.8 : 1 },
                 ]}>
-                <View
-                  style={[
-                    styles.checkCircle,
-                    done
-                      ? { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' }
-                      : { borderColor: item.color },
-                  ]}>
-                  {done && <Text style={[styles.checkMark, { color: item.color }]}>✓</Text>}
+                <View style={styles.habitTop}>
+                  <View
+                    style={[
+                      styles.checkCircle,
+                      done
+                        ? { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' }
+                        : { borderColor: item.color },
+                    ]}>
+                    {done && <Text style={[styles.checkMark, { color: item.color }]}>✓</Text>}
+                  </View>
+                  <Text
+                    style={[styles.habitName, { color: done ? '#FFFFFF' : colors.text }]}
+                    numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.streakLabel,
+                      { color: done ? '#FFFFFF' : colors.text },
+                      streak === 0 && styles.streakLabelEmpty,
+                    ]}>
+                    {streak > 0 ? `🔥 ${streakText}` : 'No streak'}
+                  </Text>
                 </View>
-                <Text
-                  style={[styles.habitName, { color: done ? '#FFFFFF' : colors.text }]}
-                  numberOfLines={1}>
-                  {item.name}
-                </Text>
-                {done && <Text style={styles.doneLabel}>Done today</Text>}
+                <View style={styles.week} aria-hidden>
+                  {week.map((day) => (
+                    <View key={day.dateKey} style={styles.weekDay}>
+                      <View
+                        style={[
+                          styles.weekDot,
+                          done
+                            ? {
+                                backgroundColor: day.done ? '#FFFFFF' : 'rgba(255,255,255,0.25)',
+                                borderColor: day.done ? '#FFFFFF' : 'rgba(255,255,255,0.25)',
+                              }
+                            : {
+                                backgroundColor: day.done ? item.color : 'transparent',
+                                borderColor: day.done ? item.color : colors.border,
+                              },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.weekLabel,
+                          { color: done ? '#FFFFFF' : colors.text },
+                          day.isToday && styles.weekLabelToday,
+                        ]}>
+                        {day.label}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               </Pressable>
             );
           }}
@@ -105,8 +147,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   habitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
     padding: 16,
     borderRadius: 12,
@@ -125,11 +165,42 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 18,
   },
-  doneLabel: {
-    color: '#FFFFFF',
+  habitTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  streakLabel: {
     fontSize: 13,
     fontWeight: '600',
-    opacity: 0.9,
+    fontVariant: ['tabular-nums'],
+  },
+  streakLabelEmpty: {
+    opacity: 0.5,
+  },
+  week: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    // Lines the strip up under the name, past the 28px check circle and its 12px gap.
+    marginLeft: 40,
+  },
+  weekDay: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  weekDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1.5,
+  },
+  weekLabel: {
+    fontSize: 11,
+    opacity: 0.6,
+  },
+  weekLabelToday: {
+    fontWeight: '700',
+    opacity: 1,
   },
   habitName: {
     flex: 1,
