@@ -1,15 +1,20 @@
 import { router, useTheme } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useHabits } from '@/habits/habits-context';
+import { toDateKey, useHabits } from '@/habits/habits-context';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
-  const { habits } = useHabits();
+  const { habits, loaded, toggleDone } = useHabits();
+  const today = toDateKey(new Date());
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {habits.length === 0 ? (
+      {!loaded ? (
+        <View style={styles.emptyState}>
+          <ActivityIndicator />
+        </View>
+      ) : habits.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emoji}>🌱</Text>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>No habits yet</Text>
@@ -22,14 +27,40 @@ export default function HomeScreen() {
           data={habits}
           keyExtractor={(habit) => habit.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <View style={[styles.habitRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.habitDot, { backgroundColor: item.color }]} />
-              <Text style={[styles.habitName, { color: colors.text }]} numberOfLines={1}>
-                {item.name}
-              </Text>
-            </View>
-          )}
+          renderItem={({ item }) => {
+            const done = item.doneDates.includes(today);
+            return (
+              <Pressable
+                role="checkbox"
+                aria-checked={done}
+                aria-label={item.name}
+                accessibilityHint={done ? 'Marks as not done today' : 'Marks as done today'}
+                onPress={() => toggleDone(item.id, today)}
+                style={({ pressed }) => [
+                  styles.habitRow,
+                  done
+                    ? { backgroundColor: item.color, borderColor: item.color }
+                    : { backgroundColor: colors.card, borderColor: colors.border },
+                  { opacity: pressed ? 0.8 : 1 },
+                ]}>
+                <View
+                  style={[
+                    styles.checkCircle,
+                    done
+                      ? { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' }
+                      : { borderColor: item.color },
+                  ]}>
+                  {done && <Text style={[styles.checkMark, { color: item.color }]}>✓</Text>}
+                </View>
+                <Text
+                  style={[styles.habitName, { color: done ? '#FFFFFF' : colors.text }]}
+                  numberOfLines={1}>
+                  {item.name}
+                </Text>
+                {done && <Text style={styles.doneLabel}>Done today</Text>}
+              </Pressable>
+            );
+          }}
         />
       )}
 
@@ -81,10 +112,24 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  habitDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+  checkCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkMark: {
+    fontSize: 16,
+    fontWeight: '800',
+    lineHeight: 18,
+  },
+  doneLabel: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    opacity: 0.9,
   },
   habitName: {
     flex: 1,
