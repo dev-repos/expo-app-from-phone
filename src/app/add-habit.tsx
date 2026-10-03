@@ -1,11 +1,15 @@
-import { router, useTheme } from 'expo-router';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { HABIT_COLORS, useHabits } from '@/habits/habits-context';
+import { textOn, useAppColors } from '@/theme/colors';
+
+// Spoken names for the swatches, in the same order as HABIT_COLORS.
+const COLOR_NAMES = ['Red', 'Orange', 'Yellow', 'Green', 'Teal', 'Blue', 'Purple', 'Pink'];
 
 export default function AddHabitScreen() {
-  const { colors } = useTheme();
+  const colors = useAppColors();
   const { addHabit } = useHabits();
   const [name, setName] = useState('');
   const [color, setColor] = useState<string>(HABIT_COLORS[0]);
@@ -34,7 +38,8 @@ export default function AddHabitScreen() {
         value={name}
         onChangeText={setName}
         placeholder="e.g. Drink water"
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor={colors.muted}
+        maxLength={40}
         autoFocus
         returnKeyType="done"
         onSubmitEditing={save}
@@ -43,13 +48,13 @@ export default function AddHabitScreen() {
 
       <Text style={[styles.label, { color: colors.text }]}>Colour</Text>
       <View style={styles.swatches}>
-        {HABIT_COLORS.map((swatch) => {
+        {HABIT_COLORS.map((swatch, index) => {
           const selected = swatch === color;
           return (
             <Pressable
               key={swatch}
               accessibilityRole="radio"
-              accessibilityLabel={`Colour ${swatch}`}
+              accessibilityLabel={COLOR_NAMES[index] ?? swatch}
               accessibilityState={{ selected }}
               onPress={() => setColor(swatch)}
               style={[
@@ -70,7 +75,7 @@ export default function AddHabitScreen() {
           styles.saveButton,
           { backgroundColor: color, opacity: !canSave ? 0.4 : pressed ? 0.8 : 1 },
         ]}>
-        <Text style={styles.saveButtonText}>Save habit</Text>
+        <Text style={[styles.saveButtonText, { color: textOn(color) }]}>Save habit</Text>
       </Pressable>
     </View>
   );
@@ -91,7 +96,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
   },
   swatches: {
@@ -108,11 +113,10 @@ const styles = StyleSheet.create({
   saveButton: {
     marginTop: 24,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
   },
   saveButtonText: {
-    color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '600',
   },
